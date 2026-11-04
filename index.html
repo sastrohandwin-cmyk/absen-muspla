@@ -407,7 +407,7 @@ function cekGPS(){
     },
     function(err){
       if(err && err.code === 1){
-        el.innerHTML = "⚠️ Ijin lokasi ditolak.<br><small>Ketuk di sini untuk mencoba lagi, lalu pilih Izinkan.</small>";
+        el.innerHTML = "⚠️ Ijin lokasi ditolak.<br><small>Ijin yang sudah ditolak tidak bisa diminta lagi dari aplikasi. Perbaiki lewat Pengaturan iPhone: hapus ikon Absen Muspla dari Layar Utama, lalu tambah lagi dari Safari dan pilih Izinkan saat ditanya lokasi. Atau buka Pengaturan, Umum, Atur Ulang, Atur Ulang Lokasi & Privasi, lalu buka ikon dan pilih Izinkan.</small>";
       } else {
         el.innerHTML = "⚠️ GPS belum terbaca.<br><small>Ketuk di sini untuk mencoba lagi.</small>";
       }
