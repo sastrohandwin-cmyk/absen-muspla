@@ -374,9 +374,24 @@ function hitungJarak(lat1, lon1, lat2, lon2){
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-function cekGPS(){
+var gpsSudahDiketuk = false;
+function perluKetukGPS(){
+  // Di ikon Layar Utama iPhone, permintaan lokasi otomatis
+  // (tanpa ketukan) bisa langsung ditolak iOS tanpa pernah
+  // memunculkan prompt, dan penolakan itu melekat. Jadi di
+  // ikon, permintaan pertama harus berasal dari ketukan
+  // pengguna — kecuali GPS pernah berhasil di ikon ini.
+  return window.navigator.standalone === true
+    && localStorage.getItem("gps_pernah_ok") !== "1";
+}
+function cekGPS(dariKetuk){
   var el = document.getElementById("gpsStatus");
   if(!el) return;
+  if(perluKetukGPS() && !dariKetuk && !gpsSudahDiketuk){
+    el.innerHTML = "📍 Ketuk di sini untuk mengaktifkan GPS";
+    el.style.background = "#fff3cd"; el.style.color = "#856404";
+    return;
+  }
   if(!navigator.geolocation){
     el.innerHTML = "⚠️ HP tidak mendukung GPS";
     el.style.background = "#f8d7da"; el.style.color = "#721c24";
@@ -384,6 +399,7 @@ function cekGPS(){
   }
   navigator.geolocation.getCurrentPosition(
     function(pos){
+      localStorage.setItem("gps_pernah_ok", "1");
       var lat = pos.coords.latitude, lng = pos.coords.longitude;
       gpsValid = false; kampusAktif = "";
       var infoJarak = [];
@@ -407,6 +423,7 @@ function cekGPS(){
     },
     function(err){
       if(err && err.code === 1){
+        localStorage.removeItem("gps_pernah_ok");
         el.innerHTML = "⚠️ Ijin lokasi ditolak.<br><small>Ijin yang sudah ditolak tidak bisa diminta lagi dari aplikasi. Perbaiki lewat Pengaturan iPhone: hapus ikon Absen Muspla dari Layar Utama, lalu tambah lagi dari Safari dan pilih Izinkan saat ditanya lokasi. Atau buka Pengaturan, Umum, Atur Ulang, Atur Ulang Lokasi & Privasi, lalu buka ikon dan pilih Izinkan.</small>";
       } else {
         el.innerHTML = "⚠️ GPS belum terbaca.<br><small>Ketuk di sini untuk mencoba lagi.</small>";
@@ -426,7 +443,7 @@ setInterval(function(){
 document.addEventListener("DOMContentLoaded", function(){ setTimeout(cekGPS, 1000); });
 document.addEventListener("DOMContentLoaded", function(){
   var el = document.getElementById("gpsStatus");
-  if(el){ el.style.cursor = "pointer"; el.addEventListener("click", function(){ el.innerHTML = "⏳ Mencari lokasi…"; cekGPS(); }); }
+  if(el){ el.style.cursor = "pointer"; el.addEventListener("click", function(){ gpsSudahDiketuk = true; el.innerHTML = "⏳ Mencari lokasi…"; cekGPS(true); }); }
 });
 
 
