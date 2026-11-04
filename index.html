@@ -406,7 +406,11 @@ function cekGPS(){
       updateTombol();
     },
     function(err){
-      el.innerHTML = "⚠️ GPS tidak aktif / ijin ditolak. Aktifkan GPS & ijinkan akses lokasi.";
+      if(err && err.code === 1){
+        el.innerHTML = "⚠️ Ijin lokasi ditolak.<br><small>Ketuk di sini untuk mencoba lagi, lalu pilih Izinkan.</small>";
+      } else {
+        el.innerHTML = "⚠️ GPS belum terbaca.<br><small>Ketuk di sini untuk mencoba lagi.</small>";
+      }
       el.style.background = "#fff3cd"; el.style.color = "#856404";
       gpsValid = false; kampusAktif = "";
       updateTombol();
@@ -420,6 +424,10 @@ setInterval(function(){
 }, 30000);
 // ===== END GPS =====
 document.addEventListener("DOMContentLoaded", function(){ setTimeout(cekGPS, 1000); });
+document.addEventListener("DOMContentLoaded", function(){
+  var el = document.getElementById("gpsStatus");
+  if(el){ el.style.cursor = "pointer"; el.addEventListener("click", function(){ el.innerHTML = "⏳ Mencari lokasi…"; cekGPS(); }); }
+});
 
 
 
