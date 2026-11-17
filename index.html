@@ -636,13 +636,26 @@ function pasangResetFooter(){
       jmlKetuk = 0;
       var kode = prompt('Masukkan kode reset admin:');
       if(kode === KODE_RESET_ADMIN){
+        var tk = null;
         try{
-          var tk = localStorage.getItem('perangkat_terkunci');
+          tk = localStorage.getItem('perangkat_terkunci');
           localStorage.removeItem('perangkat_terkunci');
           if(tk) localStorage.removeItem('pin_' + tk);
         }catch(e){}
-        alert('Kunci perangkat direset. Aplikasi akan kembali ke halaman login.');
-        location.reload();
+        // v2.7: kembalikan juga kolom PIN di sheet ke 1234
+        if(tk){
+          syncPinKeServer(tk, '1234').then(function(){
+            alert('Kunci perangkat direset. PIN kembali ke 1234.');
+            location.reload();
+          }).catch(function(){
+            alert('Kunci perangkat direset di HP ini, tapi PIN di server belum kembali ke 1234. Coba lagi nanti atau hubungi admin.');
+            location.reload();
+          });
+          setTimeout(function(){ location.reload(); }, 10000);
+        } else {
+          alert('Kunci perangkat direset. Aplikasi akan kembali ke halaman login.');
+          location.reload();
+        }
       } else if(kode !== null){
         alert('Kode salah!');
       }
@@ -683,10 +696,28 @@ function aturTombolGantiPin(){
 }
 // ===== END GANTI PIN 1x =====
 
+// ===== SINKRON PIN KE SERVER (v2.7) =====
+// PIN baru / reset PIN dikirim ke Apps Script (SinkronPin) supaya kolom PIN
+// di sheet DAFTAR_NAMA ikut berubah. Sebelum v2.7, PIN baru hanya tersimpan
+// di HP ini (localStorage) dan kolom sheet tetap 1234.
+var PIN_URL = 'https://script.google.com/macros/s/AKfycbyAaOPHpcCqIUMKUWS9bSkMCRmYXIMOhF--zmYn79KJtSdXWeaNPXWc3vFLe7ZlBASlaw/exec';
+function syncPinKeServer(nama, pin){
+  return fetch(PIN_URL, {
+    method: 'POST',
+    body: new URLSearchParams({action: 'setPin', nama: nama, pin: pin})
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(!j || !j.success) throw new Error((j && j.error) || 'server menolak');
+    return j;
+  });
+}
+// ===== END SINKRON PIN KE SERVER =====
+
 // ===== GANTI PIN =====
-// PIN baru disimpan di HP ini (localStorage) dan berlaku langsung.
-// Admin mencatat PIN di kolom PIN sheet DAFTAR_NAMA; bila lupa, Admin
-// mereset lewat footer (ketuk 5x + kode 9999) sehingga kembali ke 1234.
+// v2.7: PIN baru dikirim ke server dulu (SinkronPin) supaya kolom PIN di
+// sheet DAFTAR_NAMA ikut berubah; baru setelah server OK, PIN disimpan di
+// HP ini (localStorage). Bila server gagal, PIN tidak berubah.
+// Bila lupa PIN, Admin mereset lewat footer (ketuk 5x + kode 9999):
+// PIN di HP dihapus DAN kolom sheet dikembalikan ke 1234.
 (function(){
   var b = document.getElementById('btnGantiPin');
   var box = document.getElementById('pinBox');
@@ -708,12 +739,17 @@ function aturTombolGantiPin(){
     if(!/^\d{4}$/.test(baru)){ pesan('PIN baru harus 4 angka.', false); return; }
     if(baru !== baru2){ pesan('Ulangi PIN baru tidak sama.', false); return; }
     if(baru === lama){ pesan('PIN baru sama dengan PIN lama.', false); return; }
-    simpanPinKustom(currentUser, baru);
-    document.getElementById('pinLama').value = '';
-    document.getElementById('pinBaru').value = '';
-    document.getElementById('pinBaru2').value = '';
-    aturTombolGantiPin();
-    info('PIN berhasil diganti. Laporkan PIN baru ke Admin agar tercatat di daftar.', true);
+    pesan('Menyimpan PIN ke server...', true);
+    syncPinKeServer(currentUser, baru).then(function(){
+      simpanPinKustom(currentUser, baru);
+      document.getElementById('pinLama').value = '';
+      document.getElementById('pinBaru').value = '';
+      document.getElementById('pinBaru2').value = '';
+      aturTombolGantiPin();
+      info('PIN berhasil diganti dan sudah tercatat di daftar.', true);
+    }).catch(function(err){
+      pesan('Gagal menyimpan PIN ke server (' + (err && err.message ? err.message : 'periksa koneksi') + '). PIN tidak berubah, coba lagi.', false);
+    });
   });
 })();
 // ===== END GANTI PIN =====
@@ -940,7 +976,7 @@ function uploadFoto(file){
 
 <div id="footerReset" style="text-align:center;margin-top:20px;padding:10px;font-size:11px;color:#888;">
   @2026 Sastro_kun<br>
-  Absensi-Muspla V 2.6
+  Absensi-Muspla V 2.7
 </div>
 
 </body>
