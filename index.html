@@ -385,6 +385,7 @@ $('loginForm').addEventListener('submit', function(ev){
   $('loginScreen').style.display = 'none';
   $('mainScreen').style.display = 'block';
   updateTombol();
+  aturTombolGantiPin();
   tick();
 });
 
@@ -662,6 +663,26 @@ if(document.readyState === "loading"){
 
 
 
+// ===== GANTI PIN 1x (v2.6) =====
+// Tombol Ganti PIN hanya tampil bila user ini BELUM PERNAH ganti PIN di
+// perangkat ini (belum ada PIN kustom di localStorage). Sekali PIN diganti,
+// tombol hilang — termasuk setelah logout & login lagi. Reset admin
+// (footer 5x + 9999) menghapus PIN kustom, jadi tombol muncul lagi dan
+// user bisa ganti PIN 1x lagi. Berlaku per perangkat (PIN kustom tersimpan
+// di HP/laptop masing-masing).
+function aturTombolGantiPin(){
+  var b = document.getElementById('btnGantiPin');
+  var box = document.getElementById('pinBox');
+  if(!b) return;
+  var sudah = false;
+  if(currentUser){
+    try{ sudah = !!localStorage.getItem('pin_' + currentUser); }catch(e){}
+  }
+  b.style.display = sudah ? 'none' : '';
+  if(sudah && box) box.style.display = 'none';
+}
+// ===== END GANTI PIN 1x =====
+
 // ===== GANTI PIN =====
 // PIN baru disimpan di HP ini (localStorage) dan berlaku langsung.
 // Admin mencatat PIN di kolom PIN sheet DAFTAR_NAMA; bila lupa, Admin
@@ -691,7 +712,8 @@ if(document.readyState === "loading"){
     document.getElementById('pinLama').value = '';
     document.getElementById('pinBaru').value = '';
     document.getElementById('pinBaru2').value = '';
-    pesan('PIN berhasil diganti. Laporkan PIN baru ke Admin agar tercatat di daftar.', true);
+    aturTombolGantiPin();
+    info('PIN berhasil diganti. Laporkan PIN baru ke Admin agar tercatat di daftar.', true);
   });
 })();
 // ===== END GANTI PIN =====
@@ -918,7 +940,7 @@ function uploadFoto(file){
 
 <div id="footerReset" style="text-align:center;margin-top:20px;padding:10px;font-size:11px;color:#888;">
   @2026 Sastro_kun<br>
-  Absensi-Muspla V 2.5
+  Absensi-Muspla V 2.6
 </div>
 
 </body>
