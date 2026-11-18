@@ -567,6 +567,7 @@ function loadNames(){
     try{ terkunci = localStorage.getItem('perangkat_terkunci'); }catch(e){}
     var count = 0;
     var namaBaru = [];
+    var resetOnline = false;
     for(var i=0; i<rows.length; i++){
       var c = rows[i].c;
       if(c && c[0] && c[0].v){
@@ -577,11 +578,34 @@ function loadNames(){
           if(c[2] && c[2].v && String(c[2].v).trim()){ PINS[nama] = String(c[2].v).trim(); }
           else if(!PINS[nama]){ PINS[nama] = "1234"; }
           if(typeof FOTOMAP !== 'undefined' && c[1] && c[1].v) FOTOMAP[nama] = String(c[1].v).trim();
-          if(terkunci) continue;
+          // v2.8: RESET ONLINE — kolom E (Reset) = "YA" berarti admin
+          // membuka kunci perangkat ini dari jarak jauh.
+          if(terkunci && nama === terkunci && c[4] && String(c[4].v).trim().toUpperCase() === 'YA'){ resetOnline = true; }
           namaBaru.push(nama);
           count++;
         }
       }
+    }
+    // v2.8: bila admin membuka kunci dari jarak jauh, hapus kunci + PIN
+    // lokal di HP ini, bersihkan tanda di sheet, lalu tampilkan lagi
+    // dropdown lengkap supaya bisa pilih nama lain.
+    if(terkunci && resetOnline){
+      try{
+        localStorage.removeItem('perangkat_terkunci');
+        localStorage.removeItem('pin_' + terkunci);
+      }catch(e){}
+      clearResetFlag(terkunci).catch(function(){});
+      var infoKunci = document.getElementById('kunciInfo');
+      if(infoKunci) infoKunci.style.display = 'none';
+      sel.disabled = false;
+      terkunci = null;
+      try{
+        var e2 = $('loginError');
+        e2.textContent = 'Kunci perangkat dibuka oleh admin. Silakan pilih nama.';
+        e2.className = 'show';
+        e2.style.background = '#14532d';
+        e2.style.color = '#bbf7d0';
+      }catch(e){}
     }
     // Hanya ganti isi dropdown bila sheet mengembalikan >=1 nama valid.
     // Bila 0 nama (atau fetch gagal), option hardcoded di HTML tetap tampil.
@@ -700,7 +724,7 @@ function aturTombolGantiPin(){
 // PIN baru / reset PIN dikirim ke Apps Script (SinkronPin) supaya kolom PIN
 // di sheet DAFTAR_NAMA ikut berubah. Sebelum v2.7, PIN baru hanya tersimpan
 // di HP ini (localStorage) dan kolom sheet tetap 1234.
-var PIN_URL = 'https://script.google.com/macros/s/AKfycbyAaOPHpcCqIUMKUWS9bSkMCRmYXIMOhF--zmYn79KJtSdXWeaNPXWc3vFLe7ZlBASlaw/exec';
+var PIN_URL = 'https://script.google.com/macros/s/AKfycbxGAvjJnL-5SBLa1EPMYq9QHSLiCNlvaf3Spoain7l9JizVGHSi0tNJp7htRnymfvcQ/exec';
 function syncPinKeServer(nama, pin){
   return fetch(PIN_URL, {
     method: 'POST',
@@ -711,6 +735,23 @@ function syncPinKeServer(nama, pin){
   });
 }
 // ===== END SINKRON PIN KE SERVER =====
+
+// ===== RESET ONLINE (v2.8) =====
+// Admin membuka kunci perangkat dari jarak jauh: tulis "YA" di kolom E
+// (Reset) DAFTAR_NAMA untuk nama yang terkunci. Saat aplikasi dibuka,
+// loadNames membaca tanda itu, menghapus kunci + PIN lokal di HP itu,
+// lalu memanggil clearResetFlag supaya tanda di sheet dibersihkan lagi
+// (supaya perangkat bisa dikunci lagi saat login berikutnya).
+function clearResetFlag(nama){
+  return fetch(PIN_URL, {
+    method: 'POST',
+    body: new URLSearchParams({action: 'clearReset', nama: nama})
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(!j || !j.success) throw new Error((j && j.error) || 'server menolak');
+    return j;
+  });
+}
+// ===== END RESET ONLINE =====
 
 // ===== GANTI PIN =====
 // v2.7: PIN baru dikirim ke server dulu (SinkronPin) supaya kolom PIN di
@@ -976,7 +1017,7 @@ function uploadFoto(file){
 
 <div id="footerReset" style="text-align:center;margin-top:20px;padding:10px;font-size:11px;color:#888;">
   @2026 Sastro_kun<br>
-  Absensi-Muspla V 2.7
+  Absensi-Muspla V 2.8.1
 </div>
 
 </body>
